@@ -1,0 +1,30 @@
+import fs from "node:fs";
+import { openDocument, readPage } from "../public/src/core/read.js";
+import { analyzePage } from "../public/src/core/analyze.js";
+import { fingeringFor } from "../public/src/core/fingering.js";
+
+const pdf = process.argv[2];
+const base = Number(process.argv[3] || 36);
+const doc = openDocument(fs.readFileSync(pdf));
+const page = readPage(doc, 0);
+const t0 = Date.now();
+const r = analyzePage(page, {});
+const dt = Date.now() - t0;
+
+console.log(`perfil=${r.profileId}  sistemas=${r.systems.length}  compases=${r.measures.length}  notas=${r.notes.length}  ligaduras=${r.ties}  ${dt}ms`);
+console.log("pentagramas:", r.systems.map(s => `${s.top.toFixed(1)}-${s.bottom.toFixed(1)} e=${s.space.toFixed(2)} barras=${s.bars.length}`).join(" | "));
+const tot = {};
+for (const m of r.measures) tot[m.played.toFixed(3)] = (tot[m.played.toFixed(3)] || 0) + 1;
+console.log("suma por compas:", tot);
+console.log("total tiempos:", r.totalBeats, "->", (r.totalBeats / 4).toFixed(2), "compases");
+console.log("armaduras:", r.keys.map((k, i) => `${i}:${[...k.letters].join("") || "-"}${k.type || ""}`).join(" "));
+const rep = {};
+for (const n of r.notes) rep[`${n.name}`] = (rep[n.name] || 0) + 1;
+console.log("alturas:", Object.entries(rep).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}:${v}`).join(" "));
+let sin = 0;
+for (const n of r.notes) if (!fingeringFor(n.midi, { base })) sin++;
+console.log("notas sin digitacion:", sin);
+if (r.warnings.length) console.log("avisos:\n  " + r.warnings.slice(0, 10).join("\n  "));
+const durs = {};
+for (const n of r.notes) durs[n.dur.toFixed(3)] = (durs[n.dur.toFixed(3)] || 0) + 1;
+console.log("duraciones:", durs);

@@ -1,0 +1,26 @@
+import fs from "node:fs";
+import path from "node:path";
+import { openDocument, readPage } from "../public/src/core/read.js";
+import { analyzePage } from "../public/src/core/analyze.js";
+import { annotatePdf } from "../public/src/core/annotate.js";
+import { buildMidi, eventsFromResult } from "../public/src/core/midi.js";
+
+const [pdfPath, outDir, baseArg, bpmArg] = process.argv.slice(2);
+const base = Number(baseArg || 36);
+const bpm = Number(bpmArg || 72);
+const bytes = fs.readFileSync(pdfPath);
+const doc = openDocument(bytes);
+const page = readPage(doc, 0);
+const t0 = Date.now();
+const result = analyzePage(page, {});
+const [annotated, labels] = await Promise.all([annotatePdf(bytes, result, page, { base }), null]);
+const midi = buildMidi(eventsFromResult(result), { bpm });
+const stem = path.basename(pdfPath, ".pdf");
+const outPdf = path.join(outDir, stem + " - digitado.pdf");
+const outMidi = path.join(outDir, stem + ".mid");
+fs.writeFileSync(outPdf, annotated.bytes);
+fs.writeFileSync(outMidi, midi);
+console.log(`${stem}: ${result.notes.length} notas, ${result.measures.length} compases, ${labels} etiquetas, ${Date.now()-t0} ms`);
+console.log(`  PDF ${(annotated.bytes.length/1024).toFixed(1)} kB -> ${outPdf}`);
+console.log(`  MIDI ${midi.length} B -> ${outMidi} (${bpm} bpm, ${(result.totalBeats/bpm*60).toFixed(0)} s)`);
+if (result.warnings.length) console.log("  avisos:", result.warnings.slice(0,4));

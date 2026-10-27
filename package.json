@@ -1,0 +1,17 @@
+{
+  "name": "digitado",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Añade la digitación de válvulas a un PDF de trombón y genera MIDI y audio. PWA sin instalación.",
+  "scripts": {
+    "serve": "node tools/serve.mjs",
+    "vendor": "node tools/vendor.mjs",
+    "iconos": "node tools/iconos.mjs",
+    "test": "node tools/test-node.mjs"
+  },
+  "dependencies": {
+    "mupdf": "^1.28.1",
+    "pdf-lib": "^1.17.1"
+  }
+}
