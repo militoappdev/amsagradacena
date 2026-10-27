@@ -85,14 +85,21 @@ export function analyzePage(page, opts = {}) {
   const musicFonts = new Set(heads.map((g) => g.font));
 
   // ----- pentagrama y altura ---------------------------------------------
-  const clefBase = systems.map(() => 18); // linea inferior = Sol2 (clave de Fa)
-  for (const g of page.glyphs) {
-    const c = profile.clefs[g.uni];
-    if (!c) continue;
-    const si = systemOfY(g.y);
-    if (si < 0) continue;
-    if (c === "treble") clefBase[si] = 30;
-    else if (c === "alto") clefBase[si] = 24;
+  // 18 = linea inferior en clave de Fa (Sol2), 30 = en clave de Sol (Mi4),
+  // 24 = clave de Do en tercera (Fa3), 26 = clave de Do en cuarta (Sol3)
+  const BASES_CLAVE = { bass: 18, treble: 30, alto: 24, tenor: 26 };
+  const clefBase = systems.map(() => BASES_CLAVE[opts.clefDefault] ?? 18);
+  if (!opts.clef) {
+    for (const g of page.glyphs) {
+      const c = profile.clefs[g.uni];
+      if (!c) continue;
+      if (!profile.fonts.some((re) => re.test(g.font))) continue;
+      const si = systemOfY(g.y);
+      if (si < 0) continue;
+      clefBase[si] = BASES_CLAVE[c] ?? clefBase[si];
+    }
+  } else {
+    clefBase.fill(BASES_CLAVE[opts.clef] ?? 18);
   }
 
   for (const e of events) {

@@ -48,8 +48,18 @@ function noiseBuffer(ctx) {
   return b;
 }
 
-/** Una nota de trombon: onda armonica + sierra desafinada, filtro con envolvente, ataque de lengua. */
-function tromboneNote(ctx, out, t, dur, midi, vel, reg) {
+/** Color de cada instrumento: brillo del filtro y formante de la campana. */
+export const TIMBRES = {
+  trombon: { brillo: 1, formante: 1150, ataque: 1 },
+  trompeta: { brillo: 1.5, formante: 1650, ataque: 0.8 },
+  corneta: { brillo: 1.3, formante: 1400, ataque: 0.9 },
+  tuba: { brillo: 0.62, formante: 640, ataque: 1.35 },
+};
+const timbreDe = (t) => (typeof t === "string" ? TIMBRES[t] : t) || TIMBRES.trombon;
+
+/** Una nota de metal: onda armonica + sierra desafinada, filtro con envolvente, ataque de lengua. */
+function tromboneNote(ctx, out, t, dur, midi, vel, reg, timbre) {
+  const tim = timbreDe(timbre);
   const f = midiToFreq(midi);
   const v = Math.max(0.05, Math.min(1, (vel ?? 96) / 127));
   const peak = 0.26 * (0.45 + v * 0.75);
@@ -67,14 +77,14 @@ function tromboneNote(ctx, out, t, dur, midi, vel, reg) {
   const lp = ctx.createBiquadFilter();
   lp.type = "lowpass";
   lp.Q.value = 1.05;
-  const brillo = 620 + 2500 * v;
+  const brillo = (620 + 2500 * v) * tim.brillo;
   lp.frequency.setValueAtTime(brillo * 0.4, t);
   lp.frequency.linearRampToValueAtTime(brillo, t + 0.07);
   lp.frequency.linearRampToValueAtTime(brillo * 0.62, t + Math.max(0.1, dur * 0.8));
 
   const forma = ctx.createBiquadFilter();
   forma.type = "peaking";
-  forma.frequency.value = 1150;
+  forma.frequency.value = tim.formante;
   forma.Q.value = 1.2;
   forma.gain.value = 4.5;
 
@@ -116,7 +126,7 @@ function tromboneNote(ctx, out, t, dur, midi, vel, reg) {
   bp.frequency.value = Math.min(6000, Math.max(900, f * 4));
   bp.Q.value = 0.8;
   const ng = ctx.createGain();
-  ng.gain.value = 0.055 * (0.5 + v * 0.6);
+  ng.gain.value = 0.055 * (0.5 + v * 0.6) * tim.ataque;
   src.connect(bp).connect(ng).connect(gain);
   src.start(t);
   src.stop(t + 0.06);
@@ -150,7 +160,7 @@ export function eventsDuration(events, bpm) {
 }
 
 /** Renderiza a un AudioBuffer (offline) para exportar el WAV. */
-export async function renderBuffer(events, { bpm = 72, sampleRate = 24000, channels = 1, tail = 2.2, reverb = 0.16 } = {}) {
+export async function renderBuffer(events, { bpm = 72, sampleRate = 24000, channels = 1, tail = 2.2, reverb = 0.16, timbre = "trombon" } = {}) {
   const seconds = eventsDuration(events, bpm) + tail;
   const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
   const ctx = new Ctx(channels, Math.ceil(seconds * sampleRate), sampleRate);
@@ -158,7 +168,7 @@ export async function renderBuffer(events, { bpm = 72, sampleRate = 24000, chann
   const spb = 60 / bpm;
   for (const e of events) {
     if (e.midi == null) continue;
-    tromboneNote(ctx, bus, e.beat * spb, Math.max(0.06, e.dur * spb), e.midi, e.vel);
+    tromboneNote(ctx, bus, e.beat * spb, Math.max(0.06, e.dur * spb), e.midi, e.vel, null, timbre);
   }
   return ctx.startRendering();
 }
@@ -236,7 +246,7 @@ export class Player {
     return this.offset + Math.max(0, this.ctx.currentTime - this.startedAt);
   }
 
-  play(events, { bpm = 72, from = 0 } = {}) {
+  play(events, { bpm = 72, from = 0, timbre = "trombon" } = {}) {
     const ctx = this.ensure();
     this.halt();
     const bus = ctx.createGain();
@@ -251,7 +261,7 @@ export class Player {
     const reg = [];
     for (const e of events) {
       if (e.midi == null || e.beat + e.dur <= from) continue;
-      tromboneNote(ctx, bus, t0 + Math.max(0, e.beat - from) * spb, Math.max(0.06, e.dur * spb), e.midi, e.vel, reg);
+      tromboneNote(ctx, bus, t0 + Math.max(0, e.beat - from) * spb, Math.max(0.06, e.dur * spb), e.midi, e.vel, reg, timbre);
     }
     this.reg = reg;
   }

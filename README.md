@@ -1,6 +1,6 @@
 # Digitado
 
-Añade la **digitación de válvulas** a un PDF de trombón (3 pistones) y genera **MIDI** y **audio** de la partitura. Todo ocurre en el navegador: el PDF no se sube a ningún servidor.
+Añade la **digitación de válvulas** a un PDF de instrumentos de metal de 3 pistones (trombón de válvulas, trompeta, corneta y tuba) y genera **MIDI** y **audio** de la partitura. Todo ocurre en el navegador: el PDF no se sube a ningún servidor.
 
 Es una PWA: se abre con un enlace, se puede instalar en el móvil o el ordenador y funciona sin conexión después de la primera visita.
 
@@ -8,9 +8,9 @@ Es una PWA: se abre con un enlace, se puede instalar en el móvil o el ordenador
 
 1. **Lee el PDF** de la partitura (exportaciones digitales de MuseScore, Sibelius, Finale o Dorico; no escaneos).
    Reconoce pentagramas, notas, figuras, barrados, puntillos, alteraciones, armadura, compases, repeticiones y casillas.
-2. **Calcula la digitación**: para cada nota elige el armónico más grave que se puede tocar con el trombón de 3 pistones y, si hay varias opciones, la que usa menos pistones. Se escribe en Do (instrumento real).
+2. **Calcula la digitación**: para cada nota elige el armónico más grave que se puede tocar con el instrumento elegido y, si hay varias opciones, la que usa menos pistones.
 3. **Escribe los números bajo cada nota** sin mover nada del original (`0` = aire, `1` `2` `3`, apilados si se combinan) y devuelve un PDF nuevo.
-4. **Genera MIDI** (programa 56, trombón) y **audio** con una síntesis de trombón, respetando el tempo y, si quieres, las repeticiones y casillas.
+4. **Genera MIDI** (con el programa General MIDI de cada instrumento) y **audio** con síntesis, respetando el tempo y, si quieres, las repeticiones y casillas.
 
 ## Cómo usarla
 
@@ -19,7 +19,21 @@ Es una PWA: se abre con un enlace, se puede instalar en el móvil o el ordenador
 3. Pulsa **Añadir digitación al PDF** → tendrás el PDF con los números.
 4. Pulsa **Generar audio** → se puede escuchar en la propia página y descargar en WAV; el MIDI se descarga también.
 
-Ajustes disponibles: programa de origen (automático, Sibelius, MuseScore), instrumento (Do o Si♭), tempo y respetar repeticiones.
+En **Ajustes y elección de instrumento** (siempre a la vista, antes de subir el PDF) eliges:
+
+| Instrumento | Se lee | Transposición | Clave habitual |
+|---|---|---|---|
+| Trombón de válvulas en Do | tal cual suena | — | Fa |
+| Trombón de válvulas en Si♭ | tal cual suena | — | Fa |
+| Trompeta en Si♭ | escrito | suena 2 semitonos más grave | Sol |
+| Trompeta en Do | tal cual suena | — | Sol |
+| Corneta en Si♭ | escrito | suena 2 semitonos más grave | Sol |
+| Tuba en Do | tal cual suena | — | Fa |
+| Tuba en Si♭ | tal cual suena | — | Fa |
+
+La digitación se calcula siempre con la nota real y la fundamental del instrumento, así que el número que aparece es el que se toca. En los instrumentos transpositores el **MIDI y el audio suenan en Do** (como un piano), no como la parte escrita.
+
+También puedes fijar la **clave** a mano (Fa, Sol o Do en 3ª) si la parte viene en una clave distinta de la habitual, el **tempo** y si se respetan las **repeticiones y casillas. Los ajustes se recuerdan entre visitas.
 
 ### Instalarla como aplicación
 
@@ -69,7 +83,7 @@ public/
   src/core/profiles.js     diccionarios de glifos por programa
   src/core/analyze.js      ritmo, alturas, compases, ligaduras
   src/core/structure.js    repeticiones y casillas → orden de interpretación
-  src/core/fingering.js    tabla de armónicos y pistones
+  src/core/fingering.js    instrumentos, tabla de armónicos y pistones
   src/core/annotate.js     escritura de la digitación (pdf-lib)
   src/core/midi.js         escritura MIDI
   src/core/audio.js        síntesis de trombón y WAV
@@ -82,8 +96,9 @@ tools/                     pruebas y utilidades de desarrollo
 - Solo **PDF generados por programas** (texto y vectores), no escaneos ni fotos: no hay OMR.
 - Se procesa **una página** por archivo (la primera).
 - Reconoce los diccionarios de Sibelius y MuseScore incluidos; otras versiones o programas pueden necesitar ajustes.
+- La clave se detecta sola en Sibelius; en MuseScore se usa la clave habitual del instrumento (o la que elijas a mano).
 - Las partituras con compases irregulares o cambios de compás avisan en pantalla: conviene revisar esos compases.
-- El audio es sintetizado (no son muestras reales), con un solo timbre de trombón.
+- El audio es sintetizado (no son muestras reales); el timbre cambia algo entre trompeta, corneta, trombón y tuba.
 
 ## Licencia y créditos
 

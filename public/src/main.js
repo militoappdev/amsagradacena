@@ -5,6 +5,7 @@ import { annotatePdf } from "./core/annotate.js";
 import { buildMidi, eventsFromResult, eventsWithOrder } from "./core/midi.js";
 import { playOrder } from "./core/structure.js";
 import { renderBuffer, wavFromBuffer, eventsDuration, Player } from "./core/audio.js";
+import { INSTRUMENTOS, INSTRUMENTO_POR_DEFECTO, instrumento, digitacionDe } from "./core/fingering.js";
 import * as mupdf from "mupdf";
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +21,39 @@ const state = {
 };
 const player = new Player();
 const repro = { eventos: [], bpm: 72, dur: 0, timer: null };
+
+// ----- instrumentos --------------------------------------------------------
+
+function llenarInstrumentos() {
+  const sel = $("instrumento");
+  let grupo = null;
+  for (const i of INSTRUMENTOS) {
+    if (i.grupo !== grupo) {
+      grupo = i.grupo;
+      const og = document.createElement("optgroup");
+      og.label = grupo;
+      sel.appendChild(og);
+    }
+    const op = document.createElement("option");
+    op.value = i.id;
+    op.textContent = i.nombre;
+    sel.lastElementChild.appendChild(op);
+  }
+  const guardado = localStorage.getItem("digitado.instrumento");
+  sel.value = INSTRUMENTOS.some((i) => i.id === guardado) ? guardado : INSTRUMENTO_POR_DEFECTO;
+}
+
+function actual() {
+  return instrumento($("instrumento").value);
+}
+
+function pintarNotaInstrumento() {
+  const i = actual();
+  const trans = i.transp
+    ? `suena ${Math.abs(i.transp)} semitonos más grave de lo escrito (parte en ${i.clave === "treble" ? "clave de Sol" : "clave de Fa"}), así que el audio y el MIDI van transportados`
+    : "la parte se lee tal cual suena (instrumento en Do)";
+  $("nota-instrumento").textContent = `${i.nombre}: ${trans}. Registro aproximado: ${i.registro}.`;
+}
 
 const fmt = (s) => {
   const t = Math.max(0, Math.round(s || 0));
@@ -61,7 +95,8 @@ function vista(bytes) {
 
 function ajustes() {
   return {
-    base: Number($("instrumento").value),
+    inst: actual(),
+    clave: $("clave").value,
     bpm: Math.max(30, Math.min(200, Number($("tempo").value) || 72)),
     repes: $("repes").checked,
   };
@@ -115,7 +150,7 @@ function alternar() {
   }
   const desde = player.position >= repro.dur - 0.15 ? 0 : player.position;
   player.seek(desde);
-  player.play(repro.eventos, { bpm: repro.bpm, from: desde });
+  player.play(repro.eventos, { bpm: repro.bpm, from: desde, timbre: actual().timbre });
   pintarPlay(true);
   iniciarReloj();
 }
@@ -124,7 +159,11 @@ function alternar() {
 
 function analizar() {
   const perfil = $("origen").value || undefined;
-  const r = analyzePage(state.page, perfil ? { profileId: perfil } : {});
+  const { inst, clave } = ajustes();
+  const opts = { clefDefault: inst.clave };
+  if (perfil) opts.profileId = perfil;
+  if (clave) opts.clef = clave; // eleccion manual: manda sobre la deteccion
+  const r = analyzePage(state.page, opts);
   state.result = r;
   state.order = playOrder(r, state.page);
   state.anotado = null;
@@ -148,7 +187,13 @@ function analizar() {
     $("resumen").appendChild(li);
   }
 
+  const fuera = r.notes.filter((n) => !digitacionDe(n.midi, inst)).length;
   $("avisos").innerHTML = "";
+  if (fuera) {
+    const li = document.createElement("li");
+    li.textContent = `${fuera} nota(s) fuera del registro de ${inst.corto}: no llevan digitación.`;
+    $("avisos").appendChild(li);
+  }
   for (const w of r.warnings.slice(0, 5)) {
     const li = document.createElement("li");
     li.textContent = w;
@@ -200,8 +245,8 @@ async function digitar() {
     cargando(true, "Escribiendo la digitación…");
     $("btn-digitar").disabled = true;
     await new Promise((r) => setTimeout(r, 30));
-    const { base } = ajustes();
-    const { bytes } = await annotatePdf(state.bytes, state.result, state.page, { base });
+    const { inst } = ajustes();
+    const { bytes } = await annotatePdf(state.bytes, state.result, state.page, { instrumento: inst.id });
     state.anotado = bytes;
     vista(bytes);
     const a = $("dl-pdf");
@@ -221,10 +266,11 @@ async function digitar() {
 
 /** Prepara las notas (con o sin repeticiones), el MIDI y el reproductor. */
 function prepararAudio() {
-  const { bpm, repes } = ajustes();
+  const { bpm, repes, inst } = ajustes();
+  const opciones = { transpose: inst.transp };
   const eventos = repes
-    ? eventsWithOrder(state.result, state.order.order)
-    : eventsFromResult(state.result);
+    ? eventsWithOrder(state.result, state.order.order, opciones)
+    : eventsFromResult(state.result, opciones);
   if (!eventos.length) {
     estado("No he encontrado notas que suenen.", true);
     return;
@@ -234,7 +280,7 @@ function prepararAudio() {
   repro.bpm = bpm;
   repro.dur = eventsDuration(eventos, bpm);
 
-  const midi = buildMidi(eventos, { bpm });
+  const midi = buildMidi(eventos, { bpm, program: inst.programa, name: inst.nombre });
   const a = $("dl-midi");
   a.href = URL.createObjectURL(new Blob([midi], { type: "audio/midi" }));
   a.download = `${state.nombre}.mid`;
@@ -254,7 +300,7 @@ async function generarAudio() {
   try {
     prepararAudio();
     player.seek(0);
-    player.play(repro.eventos, { bpm: repro.bpm, from: 0 });
+    player.play(repro.eventos, { bpm: repro.bpm, from: 0, timbre: actual().timbre });
     pintarPlay(true);
     iniciarReloj();
   } catch (err) {
@@ -269,7 +315,9 @@ async function descargarWav(ev) {
   try {
     cargando(true, "Preparando el WAV… (unos segundos)");
     await new Promise((r) => setTimeout(r, 30));
-    const buf = await renderBuffer(repro.eventos, { bpm: repro.bpm, sampleRate: 24000, channels: 1, tail: 2.2 });
+    const buf = await renderBuffer(repro.eventos, {
+      bpm: repro.bpm, sampleRate: 24000, channels: 1, tail: 2.2, timbre: actual().timbre,
+    });
     const wav = wavFromBuffer(buf);
     descargar(new Blob([wav], { type: "audio/wav" }), `${state.nombre}.wav`);
     estado(`WAV descargado (${fmt(buf.duration)}).`);
@@ -300,13 +348,45 @@ $("btn-audio").addEventListener("click", generarAudio);
 $("play").addEventListener("click", alternar);
 $("dl-wav").addEventListener("click", descargarWav);
 $("origen").addEventListener("change", () => { if (state.page) { try { analizar(); } catch (e) { estado(e.message, true); } } });
-$("repes").addEventListener("change", () => { if (state.result) analizar(); });
+$("clave").addEventListener("change", () => { guardarAjustes(); if (state.page) { try { analizar(); } catch (e) { estado(e.message, true); } } });
+$("repes").addEventListener("change", () => { guardarAjustes(); if (state.result) analizar(); });
 $("instrumento").addEventListener("change", () => {
+  const inst = actual();
+  localStorage.setItem("digitado.instrumento", inst.id);
+  guardarAjustes();
+  pintarNotaInstrumento();
   if (!state.result) return;
   state.anotado = null;
   $("dl-pdf").hidden = true;
+  analizar();
 });
-$("tempo").addEventListener("change", () => { if (state.result) { detenerSonido(); prepararAudio(); } });
+$("tempo").addEventListener("change", () => { guardarAjustes(); if (state.result) { detenerSonido(); prepararAudio(); } });
+
+// recordar los ajustes entre visitas
+function guardarAjustes() {
+  try {
+    localStorage.setItem("digitado.ajustes", JSON.stringify({
+      clave: $("clave").value,
+      origen: $("origen").value,
+      tempo: $("tempo").value,
+      repes: $("repes").checked,
+    }));
+  } catch { /* modo privado */ }
+}
+
+function recuperarAjustes() {
+  try {
+    const a = JSON.parse(localStorage.getItem("digitado.ajustes") || "{}");
+    if (a.clave !== undefined) $("clave").value = a.clave;
+    if (a.origen) $("origen").value = a.origen;
+    if (a.tempo) $("tempo").value = a.tempo;
+    if (a.repes !== undefined) $("repes").checked = !!a.repes;
+  } catch { /* sin ajustes guardados */ }
+}
+
+llenarInstrumentos();
+recuperarAjustes();
+pintarNotaInstrumento();
 
 // PWA: cache para funcionar sin conexion
 if ("serviceWorker" in navigator) {

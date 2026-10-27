@@ -41,26 +41,41 @@
       <button id="elegir" class="primary">Elegir PDF</button>
       <p class="hint">Exportaciones digitales de MuseScore, Sibelius, Finale o Dorico (no escaneos).</p>
     </div>
-    <details class="opts">
-      <summary>Ajustes</summary>
-      <label>Programa de origen
-        <select id="origen">
-          <option value="">Detectar automáticamente</option>
-          <option value="sibelius">Sibelius</option>
-          <option value="musescore">MuseScore</option>
-        </select>
+    <div class="ajustes">
+      <h2>Ajustes y elección de instrumento</h2>
+
+      <label class="fila-instrumento" for="instrumento">
+        <span class="rotulo">Instrumento</span>
+        <select id="instrumento" aria-describedby="nota-instrumento"></select>
       </label>
-      <label>Instrumento
-        <select id="instrumento">
-          <option value="36">Trombón en Do (concierto)</option>
-          <option value="34">Trombón en Si♭</option>
-        </select>
-      </label>
-      <label>Tempo (negras por minuto)
-        <input id="tempo" type="number" min="30" max="200" step="1" value="72">
-      </label>
+      <p id="nota-instrumento" class="nota-instrumento"></p>
+
+      <div class="filas">
+        <label class="fila">
+          <span>Clave de la parte</span>
+          <select id="clave">
+            <option value="">Según el instrumento</option>
+            <option value="bass">Fa (bajo)</option>
+            <option value="treble">Sol (agudo)</option>
+            <option value="alto">Do en 3ª (alto)</option>
+          </select>
+        </label>
+        <label class="fila">
+          <span>Programa de origen</span>
+          <select id="origen">
+            <option value="">Detectar automáticamente</option>
+            <option value="sibelius">Sibelius</option>
+            <option value="musescore">MuseScore</option>
+          </select>
+        </label>
+        <label class="fila">
+          <span>Tempo (negras por minuto)</span>
+          <input id="tempo" type="number" min="30" max="200" step="1" value="72">
+        </label>
+      </div>
+
       <label class="check"><input id="repes" type="checkbox" checked> Respetar repeticiones y casillas</label>
-    </details>
+    </div>
   </section>
 
   <section id="resultado" class="card" hidden>
@@ -95,7 +110,7 @@
     <h2>Cómo funciona</h2>
     <ol>
       <li>Lee las notas, figuras, barrados, alteraciones y compases del PDF (todo en tu dispositivo).</li>
-      <li>Calcula la digitación de un trombón de 3 pistones: el armónico más grave, con los menos pistones posibles.</li>
+      <li>Calcula la digitación del instrumento que elijas (trombón, trompeta, corneta o tuba de 3 pistones): el armónico más grave, con los menos pistones posibles.</li>
       <li>Escribe los números bajo cada nota sin mover nada del original y, si quieres, genera el MIDI y el audio.</li>
     </ol>
     <p class="fine">Nada se sube a ningún servidor: el PDF se procesa en el navegador.</p>

@@ -5,15 +5,15 @@ import { analyzePage } from "../public/src/core/analyze.js";
 import { annotatePdf } from "../public/src/core/annotate.js";
 import { buildMidi, eventsFromResult } from "../public/src/core/midi.js";
 
-const [pdfPath, outDir, baseArg, bpmArg] = process.argv.slice(2);
-const base = Number(baseArg || 36);
+const [pdfPath, outDir, instArg, bpmArg] = process.argv.slice(2);
+const instrumento = instArg || "trombon-do";
 const bpm = Number(bpmArg || 72);
 const bytes = fs.readFileSync(pdfPath);
 const doc = openDocument(bytes);
 const page = readPage(doc, 0);
 const t0 = Date.now();
 const result = analyzePage(page, {});
-const [annotated, labels] = await Promise.all([annotatePdf(bytes, result, page, { base }), null]);
+const [annotated, labels] = await Promise.all([annotatePdf(bytes, result, page, { instrumento }), null]);
 const midi = buildMidi(eventsFromResult(result), { bpm });
 const stem = path.basename(pdfPath, ".pdf");
 const outPdf = path.join(outDir, stem + " - digitado.pdf");

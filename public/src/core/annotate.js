@@ -1,6 +1,6 @@
 // Anotacion del PDF con la digitacion (pdf-lib).
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { fingeringFor } from "./fingering.js";
+import { digitacionDe, instrumento } from "./fingering.js";
 
 const FS = 6.4;
 const LEAD = 6.3;
@@ -11,7 +11,8 @@ const HUECO = 2.8;
 const intersects = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 
 /** Calcula la posicion de cada etiqueta (sin dibujar). */
-export function layoutLabels(result, page, { base = 36 } = {}) {
+export function layoutLabels(result, page, { instrumento: inst = "trombon-do" } = {}) {
+  const ins = typeof inst === "string" ? instrumento(inst) : inst;
   const font = { widthOfTextAtSize: (t, s) => s * 0.56 }; // aproximacion Helvetica-Bold
   const obstacles = [];
   const musicFonts = new Set(page.glyphs.filter((g) => result.profile.heads[g.uni] !== undefined).map((g) => g.font));
@@ -27,7 +28,7 @@ export function layoutLabels(result, page, { base = 36 } = {}) {
   const labels = [];
   const systems = result.systems;
   for (const n of result.notes) {
-    const f = fingeringFor(n.midi, { base });
+    const f = digitacionDe(n.midi, ins);
     if (!f) continue;
     const sys = systems[n.sys];
     const baseY = sys.bottom + BANDA;

@@ -59,19 +59,19 @@ export function buildMidi(events, { bpm = 72, ppq = 480, program = 56, channel =
 }
 
 /** Eventos de audio a partir del analisis (sin repeticiones). */
-export function eventsFromResult(result, { bpm = 72, dynamics = true } = {}) {
+export function eventsFromResult(result, { bpm = 72, transpose = 0 } = {}) {
   const out = [];
   for (const n of result.notes) {
     if (n.tied) continue;
     if (n.midi == null) continue;
-    out.push({ beat: n.t0, dur: n.dur, midi: n.midi, vel: n.vel ?? 96 });
+    out.push({ beat: n.t0, dur: n.dur, midi: n.midi + transpose, vel: n.vel ?? 96 });
   }
   out.sort((a, b) => a.beat - b.beat);
   return out;
 }
 
 /** Eventos siguiendo un orden de compases (repeticiones y casillas). */
-export function eventsWithOrder(result, order) {
+export function eventsWithOrder(result, order, { transpose = 0 } = {}) {
   const out = [];
   let t = 0;
   for (const mi of order) {
@@ -81,7 +81,7 @@ export function eventsWithOrder(result, order) {
     for (const e of evs) {
       if (e.kind !== "note" || e.tied) continue;
       if (e.midi == null) continue;
-      out.push({ beat: t + (e.t0 - m.t0), dur: e.dur, midi: e.midi, vel: e.vel ?? 96 });
+      out.push({ beat: t + (e.t0 - m.t0), dur: e.dur, midi: e.midi + transpose, vel: e.vel ?? 96 });
     }
     t += m.grid ?? m.played ?? 4;
   }

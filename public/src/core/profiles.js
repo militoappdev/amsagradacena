@@ -14,7 +14,7 @@ export const PROFILES = {
     stemMethod: "stroke",
     flags: { 0x004a: 1, 0x0052: 2 },
     accidentals: { 0x0062: "b", 0x0023: "#", 0x006e: "n" },
-    clefs: { 0x003f: "bass" },
+    clefs: { 0x003f: "bass", 0x0026: "treble" }, // ? = Fa, & = Sol
     barlines: [],
     barlineMinWidth: 3.5,
     beamMethod: "polygon",
@@ -30,7 +30,7 @@ export const PROFILES = {
     dotDy: 0.42,
     flags: { 0xf04a: 1, 0xf06a: 1 },
     accidentals: { 0xf062: "b", 0xf06e: "n", 0xf063: "#" },
-    clefs: {},
+    clefs: { 0xf03f: "bass" },
     barlines: [0xf06c],
     beamMethod: "rects",
   },
