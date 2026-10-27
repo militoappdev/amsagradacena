@@ -13,6 +13,9 @@
 
 * { box-sizing: border-box; }
 
+/* el atributo hidden debe ganar a cualquier display: flex/grid de las clases */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   padding: 0;
