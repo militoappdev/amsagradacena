@@ -2,6 +2,7 @@ import fs from "node:fs";
 import { openDocument, readPage } from "../public/src/core/read.js";
 import { analyzePage } from "../public/src/core/analyze.js";
 import { fingeringFor } from "../public/src/core/fingering.js";
+import { layoutLabels } from "../public/src/core/annotate.js";
 
 const pdf = process.argv[2];
 const base = Number(process.argv[3] || 36);
@@ -24,6 +25,19 @@ console.log("alturas:", Object.entries(rep).sort((a, b) => b[1] - a[1]).map(([k,
 let sin = 0;
 for (const n of r.notes) if (!fingeringFor(n.midi, { base })) sin++;
 console.log("notas sin digitacion:", sin);
+const labels = layoutLabels(r, page, { instrumento: process.argv[4] || "trombon-do" });
+const tinta = (page.fills || [])
+  .filter((f) => f.box && f.box.y1 - f.box.y0 >= 1.5 && f.box.y1 - f.box.y0 <= 22)
+  .map((f) => f.box);
+let tapados = 0;
+for (const l of labels) {
+  const d = {
+    x0: l.rect.x0 + 0.4, x1: l.rect.x1 - 0.4,
+    y0: l.rect.y0 + 0.2, y1: l.rect.y0 + l.digits.length * 6.3 - 0.6,
+  };
+  if (tinta.some((b) => d.x0 < b.x1 && d.x1 > b.x0 && d.y0 < b.y1 && d.y1 > b.y0)) tapados++;
+}
+console.log("etiquetas:", labels.length, "tapadas por vigas:", tapados);
 if (r.warnings.length) console.log("avisos:\n  " + r.warnings.slice(0, 10).join("\n  "));
 const durs = {};
 for (const n of r.notes) durs[n.dur.toFixed(3)] = (durs[n.dur.toFixed(3)] || 0) + 1;

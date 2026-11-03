@@ -4,11 +4,31 @@ import { digitacionDe, instrumento } from "./fingering.js";
 
 const FS = 6.4;
 const LEAD = 6.3;
-const BANDA = 7.8;
+const BANDA = 12.0; // linea base del primer digito, medida desde la linea inferior
 const ANCHO_DIG = 3.7;
-const HUECO = 2.8;
+const TOPE_VIGA = 6; // descenso maximo extra para esquivar vigas
+const MARGEN = 1.4;
 
 const intersects = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
+
+/**
+ * Desnivel extra por sistema para que los digitos no queden tapados por las
+ * vigas (barras de corcheas) que cuelgan por debajo del pentagrama.
+ */
+function desnivelPorVigas(systems, page) {
+  const extra = systems.map(() => 0);
+  for (const f of page.fills || []) {
+    const b = f.box;
+    if (!b) continue;
+    const alto = b.y1 - b.y0;
+    if (alto < 1.6 || alto > 22) continue; // solo trazos gruesos (vigas, barras)
+    const i = systems.findIndex((s) => b.y0 >= s.bottom - 1 && b.y1 <= s.bottom + 18);
+    if (i < 0) continue;
+    const tope = systems[i].bottom + BANDA - FS * 0.8;
+    if (b.y1 > tope - 1) extra[i] = Math.max(extra[i], Math.min(TOPE_VIGA, b.y1 + MARGEN - tope));
+  }
+  return extra;
+}
 
 /** Calcula la posicion de cada etiqueta (sin dibujar). */
 export function layoutLabels(result, page, { instrumento: inst = "trombon-do" } = {}) {
@@ -21,17 +41,26 @@ export function layoutLabels(result, page, { instrumento: inst = "trombon-do" } 
     if (g.size < 4) continue;
     obstacles.push({
       x0: g.x - 1, x1: g.x + g.size * 0.65,
-      y0: g.y - g.size * 0.8, y1: g.y + g.size * 0.3,
+      y0: g.y - g.size * 0.8, y1: g.y + g.size * 0.3, texto: true,
     });
+  }
+  // Las vigas bajas (notas graves) tambien pueden tapar los digitos.
+  for (const f of page.fills || []) {
+    const b = f.box;
+    if (!b) continue;
+    const alto = b.y1 - b.y0;
+    if (alto < 1.5 || alto > 22 || b.x1 - b.x0 < 2) continue;
+    obstacles.push({ x0: b.x0, x1: b.x1, y0: b.y0, y1: b.y1, texto: false });
   }
 
   const labels = [];
   const systems = result.systems;
+  const extra = desnivelPorVigas(systems, page);
   for (const n of result.notes) {
     const f = digitacionDe(n.midi, ins);
     if (!f) continue;
     const sys = systems[n.sys];
-    const baseY = sys.bottom + BANDA;
+    const baseY = sys.bottom + BANDA + (extra[n.sys] || 0);
     const ancho = ANCHO_DIG;
     const alto = f.length * LEAD;
     let r = {
@@ -39,23 +68,29 @@ export function layoutLabels(result, page, { instrumento: inst = "trombon-do" } 
       y0: baseY - FS * 0.8, y1: baseY + alto,
     };
     const next = systems[n.sys + 1];
-    const limite = next ? next.top - 4 : sys.bottom + 26;
-    for (let k = 0; k < 4; k++) {
+    const limite = next ? next.top - 4 : sys.bottom + 30;
+    for (let k = 0; k < 6; k++) {
       const hit = obstacles.filter((o) => intersects(r, o));
       if (!hit.length) break;
-      const dy = Math.max(...hit.map((o) => o.y1 + 1 - r.y0));
-      if (r.y1 + dy <= limite) {
-        r = { x0: r.x0, x1: r.x1, y0: r.y0 + dy, y1: r.y1 + dy };
-        continue;
+      // Un caracter suelto (matiz, tresillo, cifra) se esquiva a un lado; una
+      // viga o un bloque ancho, bajando la etiqueta.
+      if (hit.every((o) => o.texto && o.x1 - o.x0 <= 8)) {
+        let dx = Math.max(...hit.map((o) => o.x1 + 1.2 - r.x0));
+        if (r.x1 + dx > page.width - 4 || dx > 6) dx = Math.min(...hit.map((o) => o.x0 - 1.2 - r.x1));
+        if (dx <= 6 && dx >= -6 && r.x0 + dx >= 2 && r.x1 + dx <= page.width - 4) {
+          r = { x0: r.x0 + dx, x1: r.x1 + dx, y0: r.y0, y1: r.y1 };
+          continue;
+        }
       }
-      let dx = Math.max(...hit.map((o) => o.x1 + 1.2 - r.x0));
-      if (r.x1 + dx > 800) dx = Math.min(...hit.map((o) => o.x0 - 1.2 - r.x1));
-      r = { x0: r.x0 + dx, x1: r.x1 + dx, y0: r.y0, y1: r.y1 };
+      const dy = Math.max(...hit.map((o) => o.y1 + 1 - r.y0));
+      if (r.y1 + dy > limite) break;
+      r = { x0: r.x0, x1: r.x1, y0: r.y0 + dy, y1: r.y1 + dy };
     }
     for (let k = 0; k < 6; k++) {
       const hit = labels.filter((l) => l.sys === n.sys && intersects(l.rect, r));
       if (!hit.length) break;
-      r = { x0: r.x0, x1: r.x1, y0: r.y0 + 2.6, y1: r.y1 + 2.6 };
+      if (r.y1 + 3.2 > limite) break;
+      r = { x0: r.x0, x1: r.x1, y0: r.y0 + 3.2, y1: r.y1 + 3.2 };
     }
     labels.push({ sys: n.sys, rect: r, digits: f, note: n });
   }
