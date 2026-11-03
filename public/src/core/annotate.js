@@ -12,6 +12,32 @@ const MARGEN = 1.4;
 const intersects = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
 
 /**
+ * Bounding box real de la tinta de un glifo, calculado sobre el raster de la
+ * pagina. Devuelve null si no hay tinta o si probablemente cogio una linea del
+ * pentagrama (ancho excesivo).
+ */
+function tintaGlifo(g, page) {
+  const s = page.dpi / 72;
+  const pad = g.size * 0.7;
+  const x0 = Math.max(0, Math.floor((g.x - pad) * s));
+  const x1 = Math.min(page.pixelWidth - 1, Math.ceil((g.x + pad) * s));
+  const y0 = Math.max(0, Math.floor((g.y - g.size * 0.9) * s));
+  const y1 = Math.min(page.pixelHeight - 1, Math.ceil((g.y + g.size * 0.4) * s));
+  const px = page.pixels;
+  const stride = page.stride;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, cnt = 0;
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (px[y * stride + x] < 128) { cnt++; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    }
+  }
+  if (cnt < 5) return null;
+  const w = (maxX - minX + 1) / s;
+  if (w > pad * 2 * 0.95) return null; // linea del pentagrama u otro trazo largo
+  return { x0: minX / s, x1: (maxX + 1) / s, y0: minY / s, y1: (maxY + 1) / s };
+}
+
+/**
  * Desnivel extra por sistema para que los digitos no queden tapados por las
  * vigas (barras de corcheas) que cuelgan por debajo del pentagrama.
  */
@@ -39,10 +65,9 @@ export function layoutLabels(result, page, { instrumento: inst = "trombon-do" } 
   for (const g of page.glyphs) {
     if (musicFonts.has(g.font)) continue;
     if (g.size < 4) continue;
-    obstacles.push({
-      x0: g.x - 1, x1: g.x + g.size * 0.65,
-      y0: g.y - g.size * 0.8, y1: g.y + g.size * 0.3, texto: true,
-    });
+    const ink = tintaGlifo(g, page);
+    const box = ink || { x0: g.x - 0.8, x1: g.x + g.size * 0.5, y0: g.y - g.size * 0.8, y1: g.y + g.size * 0.3 };
+    obstacles.push({ x0: box.x0, x1: box.x1, y0: box.y0, y1: box.y1, texto: true });
   }
   // Las vigas bajas (notas graves) tambien pueden tapar los digitos.
   for (const f of page.fills || []) {
@@ -68,16 +93,20 @@ export function layoutLabels(result, page, { instrumento: inst = "trombon-do" } 
       y0: baseY - FS * 0.8, y1: baseY + alto,
     };
     const next = systems[n.sys + 1];
-    const limite = next ? next.top - 4 : sys.bottom + 30;
+    const limite = next ? next.top - 4 : page.height - 14;
     for (let k = 0; k < 6; k++) {
       const hit = obstacles.filter((o) => intersects(r, o));
       if (!hit.length) break;
       // Un caracter suelto (matiz, tresillo, cifra) se esquiva a un lado; una
       // viga o un bloque ancho, bajando la etiqueta.
-      if (hit.every((o) => o.texto && o.x1 - o.x0 <= 8)) {
-        let dx = Math.max(...hit.map((o) => o.x1 + 1.2 - r.x0));
-        if (r.x1 + dx > page.width - 4 || dx > 6) dx = Math.min(...hit.map((o) => o.x0 - 1.2 - r.x1));
-        if (dx <= 6 && dx >= -6 && r.x0 + dx >= 2 && r.x1 + dx <= page.width - 4) {
+      if (hit.every((o) => o.texto)) {
+        const der = Math.max(...hit.map((o) => o.x1 + 1.2 - r.x0));
+        const izq = Math.min(...hit.map((o) => o.x0 - 1.2 - r.x1));
+        const libres = [der, izq].filter(
+          (d) => Math.abs(d) <= 9 && r.x0 + d >= 2 && r.x1 + d <= page.width - 4
+        );
+        if (libres.length) {
+          const dx = libres.sort((a, b) => Math.abs(a) - Math.abs(b))[0];
           r = { x0: r.x0 + dx, x1: r.x1 + dx, y0: r.y0, y1: r.y1 };
           continue;
         }
