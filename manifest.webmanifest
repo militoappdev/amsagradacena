@@ -1,0 +1,37 @@
+{
+  "name": "Agrupación Musical Sagrada Cena — digitación y audio de partituras",
+  "short_name": "Sagrada Cena",
+  "description": "Añade la digitación de válvulas a un PDF de trombón y escucha la partitura.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#faf6f0",
+  "theme_color": "#7c2d12",
+  "lang": "es",
+  "categories": [
+    "music",
+    "productivity",
+    "education"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
