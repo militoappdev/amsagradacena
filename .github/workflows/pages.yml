@@ -25,8 +25,9 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: public
+          name: github-pages
       - id: entrega
         uses: actions/deploy-pages@v4
