@@ -409,14 +409,14 @@ if (formContacto) {
       estado.className = "estado-contacto error";
       return;
     }
-    btn.disabled = true;
     const asuntoFinal = `Agrupación Musical Sagrada Cena · ${asunto}`;
     const cuerpo = `Email del remitente: ${email}\nAsunto: ${asunto}\n\n${mensaje}`;
     const mailto = `mailto:militoappdev@gmail.com?subject=${encodeURIComponent(asuntoFinal)}&body=${encodeURIComponent(cuerpo)}`;
+    // Envio funcional y siempre disponible en un sitio estatico: abre el
+    // cliente de correo del usuario con el mensaje ya preparado.
     window.location.href = mailto;
     estado.textContent = "Se ha abierto tu cliente de correo con el mensaje preparado: pulsa Enviar para completarlo.";
     estado.className = "estado-contacto ok";
-    btn.disabled = false;
 
   });
 }

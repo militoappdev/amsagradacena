@@ -1,5 +1,5 @@
 // Service worker: siempre intenta la red y guarda copia; sin conexion usa la cache.
-const CACHE = "digitado-v7";
+const CACHE = "digitado-v8";
 const SHELL = [
   "./", "./index.html", "./styles.css", "./manifest.webmanifest", "./icon.svg",
   "./icon-192.png", "./icon-512.png",
