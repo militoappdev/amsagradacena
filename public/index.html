@@ -1,20 +1,22 @@
 <!doctype html>
 <html lang="es">
+
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Agrupación Musical Sagrada Cena · partituras con digitación y audio</title>
-<meta name="description" content="Abre un PDF de trompeta o trombón, añade la digitación de válvulas y escucha la partitura.">
-<meta name="theme-color" content="#7c2d12">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Sagrada Cena">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./favicon.ico" sizes="any">
-<link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192">
-<link rel="apple-touch-icon" href="./apple-touch-icon.png">
-<link rel="stylesheet" href="./styles.css">
-<script type="importmap">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Agrupación Musical Sagrada Cena · partituras con digitación y audio</title>
+  <meta name="description"
+    content="Abre un PDF de trompeta o trombón, añade la digitación de válvulas y escucha la partitura.">
+  <meta name="theme-color" content="#7c2d12">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sagrada Cena">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" href="./icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="importmap">
 {
   "imports": {
     "mupdf": "./vendor/mupdf/mupdf.js",
@@ -23,105 +25,141 @@
 }
 </script>
 </head>
+
 <body>
-<header class="bar">
-  <div class="brand">
-    <img src="./icon-192.png" alt="Agrupación Musical Sagrada Cena" class="logo">
-    <div>
-      <h1>Agrupación Musical Sagrada Cena</h1>
-      <p>Digitación de válvulas + audio de tu partitura</p>
+  <header class="bar">
+    <div class="brand">
+      <img src="./icon-192.png" alt="Agrupación Musical Sagrada Cena" class="logo">
+      <div>
+        <h1>Agrupación Musical Sagrada Cena</h1>
+        <p>Digitación de válvulas + audio de tu partitura</p>
+      </div>
     </div>
-  </div>
-</header>
+  </header>
 
-<main>
-  <section id="inicio" class="card">
-    <div id="zona" class="drop">
-      <input id="archivo" type="file" accept="application/pdf,.pdf" hidden>
-      <p class="drop-title">Arrastra aquí tu PDF o</p>
-      <button id="elegir" class="primary">Elegir PDF</button>
-      <p class="hint">Exportaciones digitales de MuseScore, Sibelius, Finale o Dorico (no escaneos).</p>
-    </div>
-    <div class="ajustes">
-      <h2>Ajustes y elección de instrumento</h2>
+  <main>
+    <section id="inicio" class="card">
+      <div id="zona" class="drop">
+        <input id="archivo" type="file" accept="application/pdf,.pdf" hidden>
+        <p class="drop-title">Arrastra aquí tu PDF o</p>
+        <button id="elegir" class="primary">Elegir PDF</button>
+        <p class="hint">Exportaciones digitales de MuseScore, Sibelius, Finale o Dorico (no escaneos).</p>
+      </div>
+      <div class="ajustes">
+        <h2>Ajustes y elección de instrumento</h2>
 
-      <label class="fila-instrumento" for="instrumento">
-        <span class="rotulo">Instrumento</span>
-        <select id="instrumento" aria-describedby="nota-instrumento"></select>
+        <label class="fila-instrumento" for="instrumento">
+          <span class="rotulo">Instrumento</span>
+          <select id="instrumento" aria-describedby="nota-instrumento"></select>
+        </label>
+        <p id="nota-instrumento" class="nota-instrumento"></p>
+
+        <div class="filas">
+          <label class="fila">
+            <span>Clave de la parte</span>
+            <select id="clave">
+              <option value="">Según el instrumento</option>
+              <option value="bass">Fa (bajo)</option>
+              <option value="treble">Sol (agudo)</option>
+              <option value="alto">Do en 3ª (alto)</option>
+            </select>
+          </label>
+          <label class="fila">
+            <span>Programa de origen</span>
+            <select id="origen">
+              <option value="">Detectar automáticamente</option>
+              <option value="sibelius">Sibelius</option>
+              <option value="musescore">MuseScore</option>
+            </select>
+          </label>
+          <label class="fila">
+            <span>Tempo (negras por minuto)</span>
+            <input id="tempo" type="number" min="30" max="200" step="1" value="72">
+          </label>
+        </div>
+
+        <label class="check"><input id="repes" type="checkbox" checked> Respetar repeticiones y casillas</label>
+      </div>
+    </section>
+
+    <section id="resultado" class="card" hidden>
+      <div class="preview-wrap">
+        <img id="preview" alt="Vista previa de la partitura">
+        <div id="cargando" class="overlay" hidden><span class="spinner"></span><span
+            id="cargando-txt">Procesando…</span></div>
+      </div>
+      <div class="panel">
+        <ul id="resumen" class="resumen"></ul>
+        <div class="acciones">
+          <button id="btn-digitar" class="primary">Añadir digitación al PDF</button>
+          <button id="btn-audio">Escuchar la partitura</button>
+        </div>
+        <div id="descargas" class="descargas" hidden>
+          <a id="dl-pdf" class="pill" download>Descargar PDF digitado</a>
+          <a id="dl-midi" class="pill" download>Descargar MIDI</a>
+          <a id="dl-wav" class="pill" hidden>Descargar WAV</a>
+        </div>
+        <div id="reproductor" class="reproductor" hidden>
+          <button id="play" class="play" aria-label="Reproducir">
+            <svg viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" fill="currentColor" />
+            </svg>
+          </button>
+          <div class="barra">
+            <div id="progreso"></div>
+          </div>
+          <span id="tiempo" class="tiempo">0:00</span>
+        </div>
+        <p id="estado" class="estado" role="status"></p>
+        <ul id="avisos" class="avisos"></ul>
+      </div>
+    </section>
+
+    <section class="card ayuda">
+      <h2>Cómo funciona</h2>
+      <ol>
+        <li>Lee las notas, figuras, barrados, alteraciones y compases del PDF (todo en tu dispositivo).</li>
+        <li>Calcula la digitación del instrumento que elijas (trombón, trompeta, corneta o tuba de 3 pistones): el
+          armónico más grave, con los menos pistones posibles.</li>
+        <li>Escribe los números bajo cada nota sin mover nada del original y, si quieres, genera el MIDI y el audio.
+        </li>
+      </ol>
+      <p class="fine">Nada se sube a ningún servidor: el PDF se procesa en el navegador.</p>
+    </section>
+  </main>
+
+  <section id="contacto" class="card contacto">
+    <h2>Dudas, fallos o sugerencias</h2>
+    <p>¿Algo no se lee bien, una digitación parece errónea o tienes una idea? Escríbenos y te contestamos por email.</p>
+    <form id="form-contacto" class="form-contacto" novalidate>
+      <label class="campo"> Tu email (para poder contestarte)
+        <input type="email" name="email" required placeholder="tu@email.com" autocomplete="email">
       </label>
-      <p id="nota-instrumento" class="nota-instrumento"></p>
-
-      <div class="filas">
-        <label class="fila">
-          <span>Clave de la parte</span>
-          <select id="clave">
-            <option value="">Según el instrumento</option>
-            <option value="bass">Fa (bajo)</option>
-            <option value="treble">Sol (agudo)</option>
-            <option value="alto">Do en 3ª (alto)</option>
-          </select>
-        </label>
-        <label class="fila">
-          <span>Programa de origen</span>
-          <select id="origen">
-            <option value="">Detectar automáticamente</option>
-            <option value="sibelius">Sibelius</option>
-            <option value="musescore">MuseScore</option>
-          </select>
-        </label>
-        <label class="fila">
-          <span>Tempo (negras por minuto)</span>
-          <input id="tempo" type="number" min="30" max="200" step="1" value="72">
-        </label>
-      </div>
-
-      <label class="check"><input id="repes" type="checkbox" checked> Respetar repeticiones y casillas</label>
-    </div>
+      <label class="campo"> Asunto
+        <select name="asunto">
+          <option value="Fallo en una digitación">Fallo en una digitación</option>
+          <option value="Fallo en el análisis del PDF">Fallo en el análisis del PDF</option>
+          <option value="Duda de uso">Duda de uso</option>
+          <option value="Sugerencia">Sugerencia</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </label>
+      <label class="campo"> Mensaje
+        <textarea name="mensaje" rows="5" required placeholder="Describe el problema o la sugerencia…"></textarea>
+      </label>
+      <input type="text" name="_honey" class="honey" tabindex="-1" autocomplete="off">
+      <button type="submit" class="primary">Enviar</button>
+      <p id="estado-contacto" class="estado-contacto" role="status" aria-live="polite"></p>
+    </form>
+    <p class="fine">El mensaje se envía a militoappdev@gmail.com. Si el envío falla, escríbenos directamente a esa
+      dirección.</p>
   </section>
 
-  <section id="resultado" class="card" hidden>
-    <div class="preview-wrap">
-      <img id="preview" alt="Vista previa de la partitura">
-      <div id="cargando" class="overlay" hidden><span class="spinner"></span><span id="cargando-txt">Procesando…</span></div>
-    </div>
-    <div class="panel">
-      <ul id="resumen" class="resumen"></ul>
-      <div class="acciones">
-        <button id="btn-digitar" class="primary">Añadir digitación al PDF</button>
-        <button id="btn-audio">Escuchar la partitura</button>
-      </div>
-      <div id="descargas" class="descargas" hidden>
-        <a id="dl-pdf" class="pill" download>Descargar PDF digitado</a>
-        <a id="dl-midi" class="pill" download>Descargar MIDI</a>
-        <a id="dl-wav" class="pill" hidden>Descargar WAV</a>
-      </div>
-      <div id="reproductor" class="reproductor" hidden>
-        <button id="play" class="play" aria-label="Reproducir">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-        </button>
-        <div class="barra"><div id="progreso"></div></div>
-        <span id="tiempo" class="tiempo">0:00</span>
-      </div>
-      <p id="estado" class="estado" role="status"></p>
-      <ul id="avisos" class="avisos"></ul>
-    </div>
-  </section>
+  <footer class="pie">
+    <span>Hecho para la banda por Emilio</span>
+  </footer>
 
-  <section class="card ayuda">
-    <h2>Cómo funciona</h2>
-    <ol>
-      <li>Lee las notas, figuras, barrados, alteraciones y compases del PDF (todo en tu dispositivo).</li>
-      <li>Calcula la digitación del instrumento que elijas (trombón, trompeta, corneta o tuba de 3 pistones): el armónico más grave, con los menos pistones posibles.</li>
-      <li>Escribe los números bajo cada nota sin mover nada del original y, si quieres, genera el MIDI y el audio.</li>
-    </ol>
-    <p class="fine">Nada se sube a ningún servidor: el PDF se procesa en el navegador.</p>
-  </section>
-</main>
-
-<footer class="pie">
-  <span>Hecho para la banda · funciona sin conexión</span>
-</footer>
-
-<script type="module" src="./src/main.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
+
 </html>

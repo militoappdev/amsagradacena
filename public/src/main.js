@@ -388,6 +388,39 @@ llenarInstrumentos();
 recuperarAjustes();
 pintarNotaInstrumento();
 
+// ----- formulario de contacto / fallos / sugerencias ------------------------
+const formContacto = $("form-contacto");
+if (formContacto) {
+  formContacto.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const estado = $("estado-contacto");
+    const btn = formContacto.querySelector('button[type="submit"]');
+    const fd = new FormData(formContacto);
+    const email = String(fd.get("email") || "").trim();
+    const mensaje = String(fd.get("mensaje") || "").trim();
+    const asunto = String(fd.get("asunto") || "Contacto");
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      estado.textContent = "Introduce un email válido para poder contestarte.";
+      estado.className = "estado-contacto error";
+      return;
+    }
+    if (!mensaje) {
+      estado.textContent = "Escribe un mensaje.";
+      estado.className = "estado-contacto error";
+      return;
+    }
+    btn.disabled = true;
+    const asuntoFinal = `Agrupación Musical Sagrada Cena · ${asunto}`;
+    const cuerpo = `Email del remitente: ${email}\nAsunto: ${asunto}\n\n${mensaje}`;
+    const mailto = `mailto:militoappdev@gmail.com?subject=${encodeURIComponent(asuntoFinal)}&body=${encodeURIComponent(cuerpo)}`;
+    window.location.href = mailto;
+    estado.textContent = "Se ha abierto tu cliente de correo con el mensaje preparado: pulsa Enviar para completarlo.";
+    estado.className = "estado-contacto ok";
+    btn.disabled = false;
+
+  });
+}
+
 // PWA: cache para funcionar sin conexion
 if ("serviceWorker" in navigator) {
   const registrar = () => navigator.serviceWorker.register("./sw.js").catch((e) => console.warn("sw:", e));
